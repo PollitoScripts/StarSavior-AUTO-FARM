@@ -6,6 +6,7 @@ Bot de automatización para Star Savior con detección de imágenes y control de
 - **Farm de Niveles**: Bucle automático de inicio de batalla y siguiente nivel.
 - **Abyss Tower**: Modo especializado con spam de tecla TAB para diálogos.
 - **Auto Loot**: Recogida automática de recompensas y saltado de cinemáticas.
+- **Auto RTA To ORE**: jUEGA RTA en bucle, hasta ORE, aun no esta implementado banear y elegir equipo
 - **Detección de Level Up**: Cierra automáticamente ventanas de subida de nivel (Personaje y Cuenta).
 - **Filtro de Región**: La detección de la cruz de cierre ignora el 25% inferior de la pantalla para proteger la selección de equipo.
 
