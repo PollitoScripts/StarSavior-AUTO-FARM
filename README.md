@@ -14,4 +14,4 @@ Bot de automatización para Star Savior con detección de imágenes y control de
 2. Clona el repositorio.
 3. Instala las dependencias:
    ```bash
-   pip install -r requerements.txt
+   pip install -r requeriments.txt
