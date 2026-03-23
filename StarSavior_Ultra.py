@@ -30,12 +30,12 @@ class SkipperApp:
     def __init__(self, root):
         self.root = root
         self.root.title("StarSavior Ultra - PollitoScripts")
-        self.root.geometry("400x880") 
+        self.root.geometry("400x950") 
         self.root.configure(bg=COLOR_MAIN_BG)
         self.root.attributes("-topmost", True)
         self.root.resizable(False, False)
 
-        # --- RECURSOS (Asegúrate de tener estas imágenes en la misma carpeta) ---
+        # --- RECURSOS ---
         self.img_next = "next_stage.png"
         self.img_move = "Move.png"
         self.img_confirm = "Confirm.png"
@@ -47,15 +47,26 @@ class SkipperApp:
         self.img_levelup = "LevelUp.png" 
         self.img_account_levelup = "AccLevelUp.png" 
         self.img_saltar_journey = "SaltarJourney.png"
+        self.img_leave = "Leave.png"
+        
+        # Imágenes para RTA TO ORE
+        self.img_start_pvp = "StartPVP.png"
+        self.img_automatico = "Automatico.png"
+        self.img_promotion = "Promotion.png"
 
         self.total_clicks = 0
         self.start_time = time.time()
         self.loot_estimado = 0
-        self.vars = {"next": {"active": False}, "abyss": {"active": False}, "skip": {"active": False}}
+        self.vars = {
+            "next": {"active": False}, 
+            "abyss": {"active": False}, 
+            "skip": {"active": False},
+            "rta": {"active": False}
+        }
 
         self.setup_ui()
         self.actualizar_dashboard_loop()
-        self.log(">>> PollitoScripts: Sistema cargado correctamente.")
+        self.log(">>> PollitoScripts: Sistema RTA (Anti-Spam) cargado.")
 
     def log(self, mensaje):
         hora = time.strftime("%H:%M:%S")
@@ -78,15 +89,17 @@ class SkipperApp:
         self.f_stats.pack(fill="x", padx=40, pady=5)
         self.lbl_num = tk.Label(self.f_stats, text="000", font=("Consolas", 35, "bold"), bg=COLOR_CARD_OFF, fg=COLOR_ACCENT)
         self.lbl_num.pack()
-        self.lbl_loot = tk.Label(self.f_stats, text="NIVELES PASADOS: 0", font=("Segoe UI", 8, "bold"), bg=COLOR_CARD_OFF, fg=COLOR_GOLD)
+        self.lbl_loot = tk.Label(self.f_stats, text="ACCIONES REALIZADAS", font=("Segoe UI", 8, "bold"), bg=COLOR_CARD_OFF, fg=COLOR_GOLD)
         self.lbl_loot.pack()
 
-        self.crear_card("FARM NIVELES", "Begin, Next & Dual LevelUp", self.toggle_next)
+        # TARJETAS DE MÓDULOS
+        self.crear_card("FARM NIVELES", "Begin, Next, Enter & LevelUp", self.toggle_next)
         self.crear_card("ABYSS TOWER", "Auto-TAB (Solo Abyss) + LevelUp", self.toggle_abyss)
         self.crear_card("AUTO LOOT", "Skip, Journey, Cruz & LevelUp", self.toggle_skip)
+        self.crear_card("RTA TO ORE", "One-Click Auto Mode + Leave", self.toggle_rta)
 
         tk.Label(self.root, text="LOG DE ACTIVIDAD", font=("Segoe UI", 7, "bold"), bg=COLOR_MAIN_BG, fg="#444d56").pack(pady=(10, 0), padx=45, anchor="w")
-        self.txt_log = scrolledtext.ScrolledText(self.root, height=15, font=("Consolas", 8), bg=COLOR_LOG_BG, fg="#8b949e", bd=0, highlightthickness=1, highlightbackground="#1b1f23", state='disabled')
+        self.txt_log = scrolledtext.ScrolledText(self.root, height=12, font=("Consolas", 8), bg=COLOR_LOG_BG, fg="#8b949e", bd=0, highlightthickness=1, highlightbackground="#1b1f23", state='disabled')
         self.txt_log.pack(fill="x", padx=40, pady=5)
 
         tk.Button(self.root, text="REINICIAR SESIÓN", command=self.reset_sesion, font=("Segoe UI", 8, "bold"), bg=COLOR_MAIN_BG, fg="#f85149", bd=1, relief="flat", highlightthickness=1, cursor="hand2").pack(pady=10)
@@ -148,11 +161,15 @@ class SkipperApp:
         self.toggle_visual(self.vars["skip"]["active"], f, lt, ls, "Loot")
         if self.vars["skip"]["active"]: threading.Thread(target=self.hilo_skip, daemon=True).start()
 
+    def toggle_rta(self, f, lt, ls):
+        self.vars["rta"]["active"] = not self.vars["rta"]["active"]
+        self.toggle_visual(self.vars["rta"]["active"], f, lt, ls, "RTA")
+        if self.vars["rta"]["active"]: threading.Thread(target=self.hilo_rta, daemon=True).start()
+
     def registrar_accion(self, es_stage=False, msg=None):
         self.total_clicks += 1
         if es_stage: self.loot_estimado += RECOMPENSA_POR_STAGE
         self.lbl_num.config(text=str(self.total_clicks).zfill(3))
-        self.lbl_loot.config(text=f"NIVELES PASADOS: {self.loot_estimado}")
         if msg: self.log(msg)
 
     def buscar_y_click(self, img, prec=0.7, gray=True, log_msg=None, es_stage=False, region=None):
@@ -169,47 +186,70 @@ class SkipperApp:
     def hilo_next(self):
         while self.vars["next"]["active"]:
             self.buscar_y_click(self.img_begin, gray=False, log_msg="Farm: Inicio Batalla")
-            self.buscar_y_click(self.img_levelup, gray=False, log_msg="Farm: Level Up Personaje")
-            self.buscar_y_click(self.img_account_levelup, gray=False, log_msg="Farm: Level Up Cuenta")
+            self.buscar_y_click(self.img_levelup, gray=False, log_msg="Farm: Level Up")
+            self.buscar_y_click(self.img_account_levelup, gray=False)
+            self.buscar_y_click(self.img_leave, gray=False, log_msg="Farm: Leave")
+            self.buscar_y_click(self.img_enter, gray=False, log_msg="Farm: Enter")
             self.buscar_y_click(self.img_next, gray=False, log_msg="Farm: Next Stage", es_stage=True)
             time.sleep(1.2)
 
     def hilo_abyss(self):
         while self.vars["abyss"]["active"]:
-            self.buscar_y_click(self.img_levelup, gray=False, log_msg="Abyss: Level Up Personaje")
-            self.buscar_y_click(self.img_account_levelup, gray=False, log_msg="Abyss: Level Up Cuenta")
+            self.buscar_y_click(self.img_levelup, gray=False)
             self.buscar_y_click(self.img_enter, gray=False)
             combat = False
             if self.buscar_y_click(self.img_begin, gray=False, log_msg="Abyss: Inicio"): combat = True
-            elif self.buscar_y_click(self.img_next, gray=False, log_msg="Abyss: Siguiente", es_stage=True): combat = True
+            elif self.buscar_y_click(self.img_next, gray=False, log_msg="Abyss: Siguiente"): combat = True
             
             if combat:
                 time.sleep(2)
                 while self.vars["abyss"]["active"]:
-                    if self.buscar_y_click(self.img_confirm, gray=False, log_msg="Abyss: Piso OK"): break
+                    if self.buscar_y_click(self.img_confirm, gray=False, log_msg="Abyss: Fin"): break
                     pydirectinput.press('tab')
                     time.sleep(0.4)
             time.sleep(1)
 
     def hilo_skip(self):
         while self.vars["skip"]["active"]:
-            self.buscar_y_click(self.img_levelup, gray=False, log_msg="Loot: Level Up Personaje")
-            self.buscar_y_click(self.img_account_levelup, gray=False, log_msg="Loot: Level Up Cuenta")
-
-            for img in [self.img_skip, self.img_saltar_journey, self.img_confirm, self.img_move, self.img_reward, self.img_cruz]:
+            for img in [self.img_skip, self.img_saltar_journey, self.img_confirm, self.img_reward, self.img_cruz]:
                 if not self.vars["skip"]["active"]: break
-                # Región limitada SOLO para Cruz.png (Top 75%)
                 region_actual = REGION_SUPERIOR if img == self.img_cruz else None
-                if self.buscar_y_click(img, log_msg=f"Match: {img.split('.')[0]}", region=region_actual):
+                if self.buscar_y_click(img, log_msg=f"Loot: {img.split('.')[0]}", region=region_actual):
                     time.sleep(0.7)
             time.sleep(0.5)
 
+    def hilo_rta(self):
+        # Variable local para controlar que solo clique una vez por partida
+        auto_clicado = False 
+        
+        while self.vars["rta"]["active"]:
+            # 1. Resetear el estado al buscar partida o salir
+            if self.buscar_y_click(self.img_start_pvp, gray=False, log_msg="RTA: Buscando Match"):
+                auto_clicado = False
+                time.sleep(5) # Delay para carga
+
+            # 2. Solo intentar clicar el Automático si NO se ha clicado aún en este ciclo
+            if not auto_clicado:
+                # Usamos una precisión mayor (0.8) para el círculo que cambia de intensidad
+                if self.buscar_y_click(self.img_automatico, prec=0.8, gray=False, log_msg="RTA: Automático ON"):
+                    auto_clicado = True # Bloqueo activado hasta el lobby
+
+            # 3. Detectar fin de partida o promoción
+            if self.buscar_y_click(self.img_promotion, gray=False, log_msg="RTA: Promoción"):
+                auto_clicado = False # Reset al subir de rango
+
+            if self.buscar_y_click(self.img_leave, gray=False, log_msg="RTA: Volviendo Lobby"):
+                auto_clicado = False # Reset al salir
+            
+            # Checks generales
+            self.buscar_y_click(self.img_levelup, gray=False)
+            
+            time.sleep(1.5)
+
     def reset_sesion(self):
         self.total_clicks = 0
-        self.loot_estimado = 0
         self.start_time = time.time()
         self.lbl_num.config(text="000")
-        self.lbl_loot.config(text="NIVELES PASADOS: 0")
         self.log(">>> Sesión reiniciada.")
 
 if __name__ == "__main__":
