@@ -172,9 +172,11 @@ class SkipperApp:
         self.lbl_num.config(text=str(self.total_clicks).zfill(3))
         if msg: self.log(msg)
 
+    # --- BUSQUEDA Y CLIC (MEJORADA) ---
     def buscar_y_click(self, img, prec=0.7, gray=True, log_msg=None, es_stage=False, region=None):
         if os.path.exists(img):
             try:
+                # Bajamos un poco la precisión por defecto a 0.7 para que sea más permisivo
                 pos = pyautogui.locateOnScreen(img, confidence=prec, grayscale=gray, region=region)
                 if pos:
                     pyautogui.click(pos)
@@ -183,15 +185,44 @@ class SkipperApp:
             except: pass
         return False
 
+    # --- MÓDULO FARM NIVELES (REESTRUCTURADO) ---
     def hilo_next(self):
+        self.log(">>> Módulo Farm: Iniciado.")
         while self.vars["next"]["active"]:
-            self.buscar_y_click(self.img_begin, gray=False, log_msg="Farm: Inicio Batalla")
+            # Buscamos todas las posibilidades en cada ciclo, no en un orden rígido
+            # 1. Quitar avisos y Level Ups primero (lo que bloquea la pantalla)
             self.buscar_y_click(self.img_levelup, gray=False, log_msg="Farm: Level Up")
             self.buscar_y_click(self.img_account_levelup, gray=False)
-            self.buscar_y_click(self.img_leave, gray=False, log_msg="Farm: Leave")
+            self.buscar_y_click(self.img_move, gray=False) 
+            
+            # 2. Navegación de botones
             self.buscar_y_click(self.img_enter, gray=False, log_msg="Farm: Enter")
-            self.buscar_y_click(self.img_next, gray=False, log_msg="Farm: Next Stage", es_stage=True)
-            time.sleep(1.2)
+            self.buscar_y_click(self.img_leave, gray=False, log_msg="Farm: Leave")
+            
+            # 3. Flujo de combate
+            if self.buscar_y_click(self.img_next, gray=False, log_msg="Farm: Next Stage", es_stage=True):
+                time.sleep(1) # Delay pequeño tras pasar de stage
+                
+            if self.buscar_y_click(self.img_begin, gray=False, log_msg="Farm: Begin Battle"):
+                time.sleep(2) # Espera a que cargue la batalla
+            
+            time.sleep(1.0) # Respiro para no saturar el CPU
+
+    # --- MÓDULO AUTO LOOT (CON MOVE.PNG) ---
+    def hilo_skip(self):
+        self.log(">>> Módulo Loot: Iniciado.")
+        while self.vars["skip"]["active"]:
+            # Lista de prioridad para el loot y skips
+            for img in [self.img_skip, self.img_saltar_journey, self.img_move, self.img_confirm, self.img_reward, self.img_cruz]:
+                if not self.vars["skip"]["active"]: break
+                
+                # Regla de la cruz para no cerrar lo que no debe
+                region_actual = REGION_SUPERIOR if img == self.img_cruz else None
+                
+                if self.buscar_y_click(img, log_msg=f"Loot: {img.split('.')[0]}", region=region_actual):
+                    time.sleep(0.7)
+            
+            time.sleep(0.5)
 
     def hilo_abyss(self):
         while self.vars["abyss"]["active"]:
@@ -211,12 +242,19 @@ class SkipperApp:
 
     def hilo_skip(self):
         while self.vars["skip"]["active"]:
-            for img in [self.img_skip, self.img_saltar_journey, self.img_confirm, self.img_reward, self.img_cruz]:
-                if not self.vars["skip"]["active"]: break
+            # Añadimos self.img_move a la lista de prioridades
+            for img in [self.img_skip, self.img_saltar_journey, self.img_move, self.img_confirm, self.img_reward, self.img_cruz]:
+                if not self.vars["skip"]["active"]: 
+                    break
+                
+                # Regla especial para la Cruz (solo buscar arriba para no deseleccionar)
                 region_actual = REGION_SUPERIOR if img == self.img_cruz else None
+                
+                # Ejecutar búsqueda y clic
                 if self.buscar_y_click(img, log_msg=f"Loot: {img.split('.')[0]}", region=region_actual):
-                    time.sleep(0.7)
-            time.sleep(0.5)
+                    time.sleep(0.7)  # Delay para evitar clics dobles accidentales
+            
+            time.sleep(0.5) # Pausa entre escaneos de ciclo
 
     def hilo_rta(self):
         # Variable local para controlar que solo clique una vez por partida
